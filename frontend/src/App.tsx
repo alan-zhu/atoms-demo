@@ -64,7 +64,6 @@ function App() {
 }
 
 function BuilderPage() {
-  const [visitorId, setVisitorId] = useState<string | null>(null)
   const [user, setUser] = useState<{ id: string; email: string; name: string | null } | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [activeProject, setActiveProject] = useState<Project | null>(null)
@@ -144,8 +143,8 @@ function BuilderPage() {
     setError(null)
     try {
       const project = activeProject
-        ? await api.iterate(activeProject.id, visitorId ?? undefined, content)
-        : await api.create(visitorId ?? undefined, content, llmMode)
+        ? await api.iterate(activeProject.id, content)
+        : await api.create(content, llmMode)
       await playTimeline(project)
     } catch (cause) {
       setPrompt(content)
@@ -159,7 +158,7 @@ function BuilderPage() {
     if (generating) return
     setLoading(true)
     try {
-      const project = await api.project(projectId, visitorId ?? undefined)
+      const project = await api.project(projectId)
       setActiveProject(project)
       navigate('/')
     } catch (cause) {
@@ -170,10 +169,10 @@ function BuilderPage() {
   }
 
   async function restore(version: number) {
-    if (!activeProject || !visitorId || generating) return
+    if (!activeProject || generating) return
     setGenerating(true)
     try {
-      replaceProject(await api.restore(activeProject.id, visitorId, version))
+      replaceProject(await api.restore(activeProject.id, version))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '恢复版本失败')
     } finally {
@@ -182,9 +181,9 @@ function BuilderPage() {
   }
 
   async function publish() {
-    if (!activeProject || !visitorId) return
+    if (!activeProject) return
     try {
-      const project = activeProject.is_published ? activeProject : await api.publish(activeProject.id, visitorId)
+      const project = activeProject.is_published ? activeProject : await api.publish(activeProject.id)
       replaceProject(project)
       setShareOpen(true)
     } catch (cause) {
@@ -200,9 +199,9 @@ function BuilderPage() {
   }
 
   async function sendAppEvent(appEvent: AppEvent) {
-    if (!activeProject || !visitorId) return
+    if (!activeProject) return
     try {
-      replaceProject(await api.event(activeProject.id, visitorId, appEvent))
+      replaceProject(await api.event(activeProject.id, appEvent))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '保存数据失败')
     }
@@ -303,7 +302,7 @@ function BuilderPage() {
 
           {error && <div className="absolute right-6 top-[70px] z-50 flex max-w-md items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 py-2.5 text-xs text-red-600 shadow-pop"><AlertCircle size={15} />{error}<button onClick={() => setError(null)}><X size={14} /></button></div>}
           {loading ? <div className="grid flex-1 place-items-center text-sm text-ink/45"><LoaderCircle className="mr-2 animate-spin" size={18} />加载工作区…</div> : activeProject ? (
-            <Workspace project={activeProject} prompt={prompt} onPromptChange={setPrompt} onSubmit={submitPrompt} generating={generating} agentSteps={agentSteps} previewMode={previewMode} onPreviewMode={setPreviewMode} onEvent={sendAppEvent} visitorId={visitorId ?? ''} />
+            <Workspace project={activeProject} prompt={prompt} onPromptChange={setPrompt} onSubmit={submitPrompt} generating={generating} agentSteps={agentSteps} previewMode={previewMode} onPreviewMode={setPreviewMode} onEvent={sendAppEvent} />
           ) : view === 'discover' ? (
             <DiscoverView onUsePrompt={(p) => { setPrompt(p); setView('home') }} />
           ) : view === 'projects' ? (
@@ -339,14 +338,6 @@ function BuilderPage() {
             <AuthDialog onClose={() => setAuthOpen(false)} onAuth={async (result) => {
               setAuthOpen(false)
               setUser(result.user)
-              // 从 token 解析出 visitor_id，保持后端兼容（某些非 JWT 端点可能还会用）
-              try {
-                const payload = JSON.parse(atob(result.token.split('.')[1]))
-                if (payload.visitor_id) {
-                  window.localStorage.setItem('atoms-demo-visitor', payload.visitor_id)
-                  setVisitorId(payload.visitor_id)
-                }
-              } catch {}
               setLoading(true)
               try {
                 const list = await api.projects()
@@ -354,7 +345,7 @@ function BuilderPage() {
                 setActiveProject(list[0] ?? null)
               } catch {}
               setLoading(false)
-            }} visitorId={visitorId} />
+            }} />
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
@@ -362,7 +353,7 @@ function BuilderPage() {
   )
 }
 
-function AuthDialog({ onClose, onAuth, visitorId }: { onClose: () => void; onAuth: (result: { token: string; user: { id: string; email: string; name: string | null } }) => void; visitorId: string | null }) {
+function AuthDialog({ onClose, onAuth }: { onClose: () => void; onAuth: (result: { token: string; user: { id: string; email: string; name: string | null } }) => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -376,7 +367,7 @@ function AuthDialog({ onClose, onAuth, visitorId }: { onClose: () => void; onAut
     try {
       const r = mode === 'login'
         ? await api.login(email, password)
-        : await api.register(email, password, name || undefined, visitorId ?? undefined)
+        : await api.register(email, password, name || undefined)
       window.localStorage.setItem('atoms-demo-token', r.token)
       onAuth(r)
     } catch (cause) {
@@ -581,7 +572,7 @@ function ProjectsView({ projects, onSelect, loading }: { projects: Project[]; on
   )
 }
 
-function Workspace({ project, prompt, onPromptChange, onSubmit, generating, agentSteps, previewMode, onPreviewMode, onEvent, visitorId }: { project: Project; prompt: string; onPromptChange: (value: string) => void; onSubmit: (event?: FormEvent) => void; generating: boolean; agentSteps: Project['timeline']; previewMode: 'desktop' | 'mobile'; onPreviewMode: (mode: 'desktop' | 'mobile') => void; onEvent: (event: AppEvent) => void; visitorId: string }) {
+function Workspace({ project, prompt, onPromptChange, onSubmit, generating, agentSteps, previewMode, onPreviewMode, onEvent }: { project: Project; prompt: string; onPromptChange: (value: string) => void; onSubmit: (event?: FormEvent) => void; generating: boolean; agentSteps: Project['timeline']; previewMode: 'desktop' | 'mobile'; onPreviewMode: (mode: 'desktop' | 'mobile') => void; onEvent: (event: AppEvent) => void }) {
   const messages = useMemo(() => project.messages.slice(-14), [project.messages])
   const chatEndRef = useRef<HTMLDivElement>(null)
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages, agentSteps])
@@ -590,10 +581,10 @@ function Workspace({ project, prompt, onPromptChange, onSubmit, generating, agen
   const [codeLoading, setCodeLoading] = useState(false)
   useEffect(() => { setCodeHtml(null) }, [project.id, project.current_version])
   useEffect(() => {
-    if (rightTab !== 'code' || !visitorId || codeHtml !== null) return
+    if (rightTab !== 'code' || codeHtml !== null) return
     setCodeLoading(true)
-    api.projectHtml(project.id, visitorId).then(r => setCodeHtml(r.html)).catch(() => setCodeHtml(null)).finally(() => setCodeLoading(false))
-  }, [rightTab, project.id, project.current_version, visitorId, codeHtml])
+    api.projectHtml(project.id).then(r => setCodeHtml(r.html)).catch(() => setCodeHtml(null)).finally(() => setCodeLoading(false))
+  }, [rightTab, project.id, project.current_version, codeHtml])
   return <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[minmax(360px,.82fr)_minmax(520px,1.18fr)]">
     <section className="flex min-h-[360px] xl:min-h-0 min-w-0 flex-col border-b border-black/[.08] bg-white xl:border-b-0 xl:border-r">
       <div className="flex shrink-0 items-center justify-between border-b border-black/[.07] px-5 py-3"><div className="flex items-center gap-2.5 text-xs font-medium text-ink/70"><MessageSquare size={14} className="text-atoms" />与 Atoms 团队对话<div className="ml-1 flex -space-x-1.5">{teamMembers.map((name) => <div key={name} className="ring-2 ring-white">{agentAvatar(name, 20)}</div>)}</div></div><span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] text-emerald-600"><span className="h-1 w-1 rounded-full bg-emerald-500" />已保存</span></div>
