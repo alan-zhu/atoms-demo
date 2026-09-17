@@ -206,6 +206,12 @@ tempCodeRunnerFile.py
 # Ruff stuff:
 .ruff_cache/
 
+# Atoms Demo local data and frontend dependencies
+backend/data/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
 # PyPI configuration file
 .pypirc
 

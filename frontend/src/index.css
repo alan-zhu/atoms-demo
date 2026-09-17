@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+html, body, #root { min-width: 320px; min-height: 100%; margin: 0; }
+body {
+  background: #f6f6f6;
+  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: rgba(12, 12, 12, .14); background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(12, 12, 12, .24); background-clip: content-box; }
+
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation: fade-slide-in .25s ease-out both; }
+.fade-in { animation-name: fade-slide-in; }
+.slide-in-from-bottom-1 { animation-name: fade-slide-in; }
+.duration-300 { animation-duration: .3s; }
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(66, 103, 255, .35); }
+  70% { box-shadow: 0 0 0 6px rgba(66, 103, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(66, 103, 255, 0); }
+}
+.animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
+
+@keyframes float-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-float-up { animation: float-up .4s ease-out both; }
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.animate-bob { animation: bob 3s ease-in-out infinite; }
