@@ -7,9 +7,9 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, Request, status
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,15 +21,13 @@ SECRET_KEY = os.environ.get("AUTH_SECRET", secrets.token_urlsafe(48))
 ALGORITHM = "HS256"
 TOKEN_TTL_HOURS = 72  # 3 天
 
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(pw: str) -> str:
-    return pwd.hash(pw)
+    return bcrypt.hashpw(pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(pw: str, hashed: str) -> bool:
-    return pwd.verify(pw, hashed)
+    return bcrypt.checkpw(pw.encode("utf-8"), hashed.encode("utf-8"))
 
 
 # ─── Token ────────────────────────────────────────────────
